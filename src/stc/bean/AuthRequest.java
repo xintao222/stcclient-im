@@ -17,7 +17,7 @@ public class AuthRequest extends AbstractCommonBean implements TLVSignal{
 	@TLVAttribute(tag=11010014, description = "授权令牌")
 	private String token;
 
-	//验证前的应用@验证的应�?
+	//验证前的应用@验证的应�?
 	@TLVAttribute(tag=11010012, description = "登录来源") 
 	private String source;
 	

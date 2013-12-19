@@ -1,8 +1,8 @@
 package stc.client.im;
 
 import stc.bean.AuthRequest;
-import stc.bean.AuthResponse;
-import stc.foundation.codec.CodecManager;
+import stc.foundation.codec.CodecHelper;
+import stc.foundation.codec.bean.tlv.annotation.TLVAttribute;
 import stc.foundation.util.ByteUtils;
 import android.os.Bundle;
 import android.app.Activity;
@@ -16,14 +16,14 @@ public class MainActivity extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		
-		AuthRequest req = new AuthRequest(); 
-		req.setSkyId(1000);
+		AuthRequest req = new AuthRequest();
 		req.setToken("123456");
-		byte[] x = CodecManager.encode(req);
-		Log.e("test", ByteUtils.bytesAsHexString(x, 65535));
+		req.setSource("ssss");
 		
-		AuthRequest resp = (AuthRequest)CodecManager.decode(x, AuthRequest.class);
-		Log.e("test", resp.toString());
+		byte[] buf = CodecHelper.encodeSsip(req);
+		Log.e("test1", ByteUtils.bytesAsHexString(buf, 1024));		
+		
+		Log.e("test2", ByteUtils.bytesAsHexString(CodecHelper.encodeSsip(CodecHelper.decodeSsip(buf)), 1024));
 	}
 
 	@Override
