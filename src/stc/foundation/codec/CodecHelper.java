@@ -59,7 +59,6 @@ public class CodecHelper {
 	 */
 	static public byte[] encodeSsip(AbstractCommonBean ssipBean) {
 		TLVAttribute attr = ssipBean.getClass().getAnnotation(TLVAttribute.class);
-		Log.e("tag",""+attr.tag());
 		
 		//先编码协议体
 		BeanTLVEncoder beanEncoder = new BeanTLVEncoder();
@@ -97,11 +96,9 @@ public class CodecHelper {
 	 * 从byte[]读取ssip中的length字段，返回整个协议包的大小
 	 * @param buf
 	 * @return
-	 * >0		 成功
-	 * =0		数据还不够或者异常
 	 */
 	static public int getSsipLength(byte[] buf) {
-		return 0;
+		return XipUtils.getSsipLength(buf);
 	}
 	
 }
