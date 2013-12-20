@@ -124,5 +124,16 @@ public class XipUtils {
 
 		return BeanMetainfoUtils.createTypeMetainfoByClasses(classes, SSIP_CLS2INT);
 	}
+	
+	/**
+	 * 获取该ssip报文长度
+	 * @param header
+	 */
+	public static int getSsipLength(byte[] header) {
+		byte[] buf = new byte[3];		
+		//1-3,total len
+		System.arraycopy(header, 1, buf, 0, 3);
+		return DefaultNumberCodecs.getBigEndianNumberCodec().bytes2Int(buf, 3);
+	}
 
 }
