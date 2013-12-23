@@ -3,7 +3,9 @@ package stc.foundation.endpoint;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketAddress;
 import java.util.HashMap;
 import java.util.UUID;
 
@@ -32,10 +34,11 @@ public class SsipOverTCPEndpoint implements SsipEndpoint {
 	private Socket socket = null;
 	private DataInputStream input = null;
 	private DataOutputStream output = null;
-	private int MSGSEND_TIMOUT_MILLIS = 30000;
+	private int MSGSEND_TIMEOUT_MILLIS = 30000;
+	private int CONNECT_TIMEOUT_MILLIS = 10000;
 	private EP_STAT status = EP_STAT.DISCONNECTED;
 	/**
-	 * 主要的工作将由master任务队列完成
+	 * 主要的工作将由master任务队列完成，由于new Socket/write方法都是阻塞的，所以可能造成排队的情况。一种结果就是request的超时检测时间将被拉长
 	 */
 	private SingleTaskHandler masterHandler = new SingleTaskHandler(
 			"ssip_master");
@@ -67,52 +70,6 @@ public class SsipOverTCPEndpoint implements SsipEndpoint {
 			@Override
 			public void run() {
 				connect();
-			}
-		});
-	}
-
-	@Override
-	public void quit() {
-		// 退出清理任务
-		masterHandler.clearAllPendingTask();
-		
-		// 释放资源
-		masterHandler.post(new Runnable() {
-
-			@Override
-			public void run() {
-				readThread = null;
-				
-				if (socket != null) {
-					try {
-						socket.close();
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
-					socket = null;
-				}
-				if (input != null) {
-					try {
-						input.close();
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
-					input = null;
-				}
-				if (output != null) {
-					try {
-						output.close();
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
-					output = null;
-				}
-				
-				if (messages != null) {
-					messages.clear();
-					messages = null;
-				}
-				masterHandler = null;
 			}
 		});
 	}
@@ -170,13 +127,20 @@ public class SsipOverTCPEndpoint implements SsipEndpoint {
 								messages.remove(msg.getIdentification());
 							}
 						}
-					}, MSGSEND_TIMOUT_MILLIS, msg.getIdentification().toString());
+					}, MSGSEND_TIMEOUT_MILLIS, msg.getIdentification().toString());
 					
 				} catch (Exception e) {
 					e.printStackTrace();
 					// 网络异常
 					receiver.messageFailed(msg, EP_REASON.NET_ERROR);
 					//发送失败不需要触发重连，该工作会由接收线程负责监测
+					try {
+						//把socket关闭掉，这样可以更快触发接收线程检测到异常
+						socket.close();
+						socket = null;
+					} catch (IOException e1) {
+						e1.printStackTrace();
+					}
 				}
 			}
 		});		
@@ -225,8 +189,10 @@ public class SsipOverTCPEndpoint implements SsipEndpoint {
 						receiver.statusChanged(status);
 					}					
 					
-					// 发起连接，默认情况下这个是阻塞的
-					socket = new Socket(host, port);
+					// 发起连接,设置超时时间CONNECT_TIMEOUT_MILLIS
+					socket = new Socket();
+					SocketAddress address = new InetSocketAddress(host, port);
+					socket.connect(address, CONNECT_TIMEOUT_MILLIS);
 					input = new DataInputStream(socket.getInputStream());
 					output = new DataOutputStream(socket.getOutputStream());
 					readThread = new ReadThread(SsipOverTCPEndpoint.this, input);
