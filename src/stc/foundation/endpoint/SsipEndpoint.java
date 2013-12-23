@@ -17,9 +17,20 @@ public interface SsipEndpoint{
 	 */
 	public enum EP_STAT{
 		DISCONNECTED,		//未连接
-		CONNECTED,			//已连接
-		READY,				//准备好
-		STOP				//停止状态
+		CONNECTED			//已连接
+		//READY,				//准备好
+		//STOP				//停止状态
+	};
+	
+	/**
+	 * 
+	 * @author key
+	 *
+	 */
+	public enum EP_REASON{
+		ENCODE_ERROR,		//编码失败
+		RESP_TIMEOUT,		//响应超时
+		NET_ERROR			//网络异常
 	};
 	
 	/**
