@@ -4,7 +4,6 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
-import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.UUID;
 
@@ -34,6 +33,7 @@ public class SsipOverTCPEndpoint implements SsipEndpoint {
 	private DataInputStream input = null;
 	private DataOutputStream output = null;
 	private int MSGSEND_TIMOUT_MILLIS = 30000;
+	private EP_STAT status = EP_STAT.DISCONNECTED;
 	/**
 	 * 主要的工作将由master任务队列完成
 	 */
@@ -74,7 +74,7 @@ public class SsipOverTCPEndpoint implements SsipEndpoint {
 	@Override
 	public void quit() {
 		// 退出清理任务
-		masterHandler.clearPendingTask();
+		masterHandler.clearAllPendingTask();
 		
 		// 释放资源
 		masterHandler.post(new Runnable() {
@@ -119,8 +119,7 @@ public class SsipOverTCPEndpoint implements SsipEndpoint {
 
 	@Override
 	public EP_STAT status() {
-		// TODO Auto-generated method stub
-		return null;
+		return this.status;
 	}
 
 	@Override
@@ -136,13 +135,13 @@ public class SsipOverTCPEndpoint implements SsipEndpoint {
 				byte[] buf = CodecHelper.encodeSsip(msg);
 				if (buf == null) {
 					// 编码失败
-					receiver.messageFailed(msg);
+					receiver.messageFailed(msg, EP_REASON.ENCODE_ERROR);
 					return;
 				}
 
 				if (output == null) {
 					// 网络异常
-					receiver.messageFailed(msg);
+					receiver.messageFailed(msg, EP_REASON.NET_ERROR);
 					return;
 				}
 
@@ -156,7 +155,7 @@ public class SsipOverTCPEndpoint implements SsipEndpoint {
 					messages.put(msg.getIdentification(), msg);
 					
 					// 新增一个响应超时检测的任务
-					masterHandler.postDelayed(new TaskRunnable("", "", msg,
+					masterHandler.postDelayedWithToken(new TaskRunnable("", "", msg,
 							"check ssip timeout") {
 
 						@Override
@@ -167,62 +166,28 @@ public class SsipOverTCPEndpoint implements SsipEndpoint {
 									.getIdentification());
 							if (request != null) {
 								// 响应超时了
-								receiver.messageFailed(msg);
+								receiver.messageFailed(msg, EP_REASON.RESP_TIMEOUT);
 								messages.remove(msg.getIdentification());
 							}
 						}
-					}, MSGSEND_TIMOUT_MILLIS);
+					}, MSGSEND_TIMOUT_MILLIS, msg.getIdentification().toString());
 					
 				} catch (Exception e) {
 					e.printStackTrace();
 					// 网络异常
-					receiver.messageFailed(msg);
+					receiver.messageFailed(msg, EP_REASON.NET_ERROR);
 					//发送失败不需要触发重连，该工作会由接收线程负责监测
 				}
 			}
 		});		
 	}
 
-	/**
-	 * 第一次连接服务器
-	 */
-	private void connect() {
-
-		// 立即进行连接
-		masterHandler.post(new Runnable() {
-
-			@Override
-			public void run() {
-
-				try {
-					// 如果socket不为空，说明已经连接上，此次连接任务忽略
-					if (socket == null) {
-						// 发起一次新的连接
-						socket = new Socket(host, port);
-						input = new DataInputStream(socket.getInputStream());
-						output = new DataOutputStream(socket.getOutputStream());
-
-						// 连接成功，开始接收数据
-						readThread = new ReadThread(SsipOverTCPEndpoint.this, input);
-						readThread.start();
-
-						// 重置重连时间
-						reconnDelayedMills = 0;
-					}
-				} catch (Exception e) {
-					e.printStackTrace();
-					// 触发重连
-					reconnect();
-				}
-			}
-		});
-	}
-	
+		
 	/**
 	 * 断开重连的逻辑在这里，读和写、第一次连接失败、心跳失败等都会触发这个操作
 	 * 
 	 */
-	private void reconnect() {
+	private void connect() {
 		TaskRunnable task = new TaskRunnable("reconnect") {
 			@Override
 			public void trun() {
@@ -254,7 +219,13 @@ public class SsipOverTCPEndpoint implements SsipEndpoint {
 						}
 						output = null;
 					}
-					// 确实无法连接，发起重连
+					if (status != EP_STAT.DISCONNECTED) {
+						//状态变更
+						status = EP_STAT.DISCONNECTED;
+						receiver.statusChanged(status);
+					}					
+					
+					// 发起连接，默认情况下这个是阻塞的
 					socket = new Socket(host, port);
 					input = new DataInputStream(socket.getInputStream());
 					output = new DataOutputStream(socket.getOutputStream());
@@ -262,10 +233,12 @@ public class SsipOverTCPEndpoint implements SsipEndpoint {
 					readThread.start();
 					// 重置重连时间
 					reconnDelayedMills = 0;
+					status = EP_STAT.CONNECTED;
+					receiver.statusChanged(status);
 
 				} catch (Exception e) {
 					e.printStackTrace();
-					reconnect();
+					connect();
 
 				}
 			}
@@ -320,6 +293,7 @@ public class SsipOverTCPEndpoint implements SsipEndpoint {
 					if (request != null) {
 						// 已收到响应，删除
 						messages.remove(response.getIdentification());
+						masterHandler.clearPendingTask(response.getIdentification().toString());
 					}
 
 					receiver.messageReceived(response);
@@ -332,8 +306,8 @@ public class SsipOverTCPEndpoint implements SsipEndpoint {
 	 * ReadThread读失败，需要重新建立连接，需要异步处理
 	 */
 	private void onReadError() {
-		//触发重连
-		this.reconnect();
+		//触发重连		
+		this.connect();
 	}
 
 	/**
