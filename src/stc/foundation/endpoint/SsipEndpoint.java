@@ -42,11 +42,6 @@ public interface SsipEndpoint{
 	public void init(SsipReceiver receiver, String host, int port);
 	
 	/**
-	 * 停止运行，清理数据。不可再启动，需要重新new对象
-	 */
-	public void quit();
-	
-	/**
 	 * 获取EP当前运行状态
 	 * @return
 	 */

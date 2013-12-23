@@ -1,6 +1,7 @@
 package stc.client.im;
 
 import stc.bean.AuthRequest;
+import stc.foundation.codec.bean.AbstractCommonBean;
 import stc.foundation.endpoint.SsipEndpoint;
 import stc.foundation.endpoint.SsipEndpoint.EP_STAT;
 import stc.foundation.endpoint.SsipOverTCPEndpoint;
@@ -37,11 +38,11 @@ public class MainActivity extends Activity implements SsipReceiver{
 					Log.i("activity", "send :"+req);
 					
 					endpoint.send(req);
-					try {
-						Thread.sleep(1000);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
+//					try {
+//						Thread.sleep(1000);
+//					} catch (InterruptedException e) {
+//						e.printStackTrace();
+//					}
 				}
 				
 			}}).start();
@@ -55,15 +56,15 @@ public class MainActivity extends Activity implements SsipReceiver{
 	}
 
 	@Override
-	public void messageReceived(Object msg) {
+	public void messageReceived(AbstractCommonBean msg) {
 		// TODO Auto-generated method stub
-		Log.i("activity", "messageReceived:"+msg);
+		Log.i("activity", "messageReceived:"+msg.getIdentification());
 	}
 
 	@Override
-	public void messageSent(Object msg) {
+	public void messageSent(AbstractCommonBean msg) {
 		// TODO Auto-generated method stub
-		Log.i("activity", "messageSent:"+msg);
+		Log.i("activity", "messageSent:"+msg.getIdentification());
 		
 	}
 
@@ -74,8 +75,8 @@ public class MainActivity extends Activity implements SsipReceiver{
 	}
 
 	@Override
-	public void messageFailed(Object msg, SsipEndpoint.EP_REASON reason) {
-		Log.i("activity", "messageFailed:"+msg+" r:"+reason);
+	public void messageFailed(AbstractCommonBean msg, SsipEndpoint.EP_REASON reason) {
+		Log.i("activity", "messageFailed:"+msg.getIdentification()+" r:"+reason);
 	}
 
 }
