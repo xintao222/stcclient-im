@@ -1,12 +1,10 @@
 package stc.client.im;
 
 import stc.bean.AuthRequest;
-import stc.foundation.codec.CodecHelper;
-import stc.foundation.codec.bean.tlv.annotation.TLVAttribute;
+import stc.foundation.endpoint.SsipEndpoint;
 import stc.foundation.endpoint.SsipEndpoint.EP_STAT;
 import stc.foundation.endpoint.SsipOverTCPEndpoint;
 import stc.foundation.endpoint.SsipReceiver;
-import stc.foundation.util.ByteUtils;
 import android.os.Bundle;
 import android.app.Activity;
 import android.util.Log;
@@ -16,6 +14,8 @@ import java.lang.Runnable;
 
 public class MainActivity extends Activity implements SsipReceiver{
 
+	SsipOverTCPEndpoint endpoint = new SsipOverTCPEndpoint();	
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -24,18 +24,21 @@ public class MainActivity extends Activity implements SsipReceiver{
 
 			@Override
 			public void run() {
-				AuthRequest req = new AuthRequest();
-				req.setToken("123456");
-				req.setSource("ssss");
-				Log.i("activity", "send :"+req);
 				
-				SsipOverTCPEndpoint endpoint = new SsipOverTCPEndpoint();
+				
 				endpoint.init(MainActivity.this, "42.121.109.124", 20000);
 				
-				while (true) {
+				int i = 3;
+				while ((i--)>0) {
+					//注意，每次需要new，否则uuid相同
+					AuthRequest req = new AuthRequest();
+					req.setToken("123456");
+					req.setSource("ssss");
+					Log.i("activity", "send :"+req);
+					
 					endpoint.send(req);
 					try {
-						Thread.sleep(10000);
+						Thread.sleep(1000);
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
@@ -65,16 +68,14 @@ public class MainActivity extends Activity implements SsipReceiver{
 	}
 
 	@Override
-	public void messageFailed(Object msg) {
+	public void statusChanged(EP_STAT stat) {
 		// TODO Auto-generated method stub
-		Log.i("activity", "messageFailed:"+msg);
 		
 	}
 
 	@Override
-	public void statusChanged(EP_STAT stat) {
-		// TODO Auto-generated method stub
-		
+	public void messageFailed(Object msg, SsipEndpoint.EP_REASON reason) {
+		Log.i("activity", "messageFailed:"+msg+" r:"+reason);
 	}
 
 }

@@ -15,9 +15,11 @@ public interface SsipReceiver {
     
     /**
      * 发送一个SSIP消息失败，一般是socket异常造成发送超时
-     * @param msg
+     * @param msg		对应发送的消息
+     * @param reason	发送失败的原因
+     * 
      */
-    void messageFailed(Object msg);
+    void messageFailed(Object msg, SsipEndpoint.EP_REASON reason);
     
     /**
      * EP状态变更
