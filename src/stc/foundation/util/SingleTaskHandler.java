@@ -58,6 +58,31 @@ public final class SingleTaskHandler {
             Log.e(TAG, name + " postAtTime failed!");
         }
     }
+    
+    /**
+     * 向任务队列提交任务，延时处理，同时指定token；一般是可用于后续删除
+     * 
+     * @param r 执行对象
+     * @param delayMillis 延时(毫秒)
+     * @param token		任务标记
+     */
+    public void postDelayedWithToken(Runnable r, long delayMillis, String token) {
+        if (delayMillis < 0) {
+            delayMillis = 0;
+        }
+
+        if (handler.postAtTime(r, token, SystemClock.uptimeMillis() + delayMillis) == false) {
+            Log.e(TAG, name + " postAtTime failed!");
+        }
+    }
+    
+    /**
+     * 清除指定排队任务,但是不会中断正在执行的任务
+     * @param token 任务标记
+     */
+    public void clearPendingTask(String token) {
+        handler.removeCallbacksAndMessages(null);
+    }
 
     /**
      * 向任务队列提交任务，立即处理。
@@ -80,9 +105,9 @@ public final class SingleTaskHandler {
     }
 
     /**
-     * 清除排队任务,但是不会中断正在执行的任务
+     * 清除所有排队任务,但是不会中断正在执行的任务
      */
-    public void clearPendingTask() {
-        handler.removeCallbacksAndMessages(TOKEN);
+    public void clearAllPendingTask() {
+        handler.removeCallbacksAndMessages(null);
     }
 }
