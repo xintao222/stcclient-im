@@ -137,11 +137,13 @@ public class SsipOverTCPEndpoint implements SsipEndpoint {
 				if (buf == null) {
 					// 编码失败
 					receiver.messageFailed(msg);
+					return;
 				}
 
 				if (output == null) {
 					// 网络异常
 					receiver.messageFailed(msg);
+					return;
 				}
 
 				try {
@@ -362,6 +364,7 @@ public class SsipOverTCPEndpoint implements SsipEndpoint {
 				try {
 
 					do {
+						Log.i(TAG, "start receive data...");
 						// 读取SSIP头数据
 						ret = input.read(header, 0, header.length);
 						if (ret != header.length) {
